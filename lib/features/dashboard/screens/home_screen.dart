@@ -22,6 +22,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool _isLoading = true;
   List<dynamic> _courses = [];
+  String _syncStatus = 'connected';
+  int _pendingCount = 0;
   StreamSubscription? _connectivitySubscription;
 
   @override
@@ -29,19 +31,51 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadCourses();
     _listenToConnectivity();
+    pendingCountNotifier.addListener(_onPendingChanged);
   }
+
+  void _onPendingChanged() => _checkPendingCount();
 
   void _listenToConnectivity() {
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
-      if (!results.contains(ConnectivityResult.none)) {
-        SyncManager.instance.syncAll();
+      final isConnected = !results.contains(ConnectivityResult.none);
+      setState(() => _syncStatus = isConnected ? 'connected' : 'offline');
+      if (isConnected) {
+        _checkPendingCount();
+        setState(() => _syncStatus = 'syncing');
+        SyncManager.instance.syncAll().then((result) {
+          _checkPendingCount();
+          if (mounted && result.hasFailed) setState(() => _syncStatus = 'error');
+        });
       }
     });
+    _checkPendingCount();
+  }
+
+  Future<void> _checkPendingCount() async {
+    final db = DatabaseHelper.instance;
+    final att = await db.queryWhere('pending_attendance', 'sync_status = ? OR sync_status = ?', ['pending', 'sending']);
+    final mem = await db.queryWhere('pending_memorizations', 'sync_status = ? OR sync_status = ?', ['pending', 'sending']);
+    final quiz = await db.queryWhere('pending_quiz_requests', 'sync_status = ? OR sync_status = ?', ['pending', 'sending']);
+    final failedAtt = await db.queryWhere('pending_attendance', 'sync_status = ?', ['failed']);
+    final failedMem = await db.queryWhere('pending_memorizations', 'sync_status = ?', ['failed']);
+    final failedQuiz = await db.queryWhere('pending_quiz_requests', 'sync_status = ?', ['failed']);
+    final failedTotal = failedAtt.length + failedMem.length + failedQuiz.length;
+    final total = att.length + mem.length + quiz.length;
+    if (mounted) {
+      setState(() {
+        _pendingCount = total;
+        if (_syncStatus == 'syncing') return;
+        if (failedTotal > 0) { _syncStatus = 'error'; }
+        else if (_syncStatus != 'offline') { _syncStatus = total > 0 ? 'pending' : 'connected'; }
+      });
+    }
   }
 
   @override
   void dispose() {
     _connectivitySubscription?.cancel();
+    pendingCountNotifier.removeListener(_onPendingChanged);
     super.dispose();
   }
 
@@ -60,6 +94,35 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Widget _buildSyncStatusBar() {
+    Color bgColor; Color textColor; IconData icon; String message;
+    switch (_syncStatus) {
+      case 'offline':
+        bgColor = Colors.red.withOpacity(0.1); textColor = Colors.red; icon = Icons.cloud_off;
+        message = 'غير متصل — يعمل من الذاكرة المحلية'; break;
+      case 'pending':
+        bgColor = Colors.orange.withOpacity(0.1); textColor = Colors.orange.shade700; icon = Icons.cloud_upload;
+        message = 'جاري المزامنة...'; break;
+      case 'syncing':
+        bgColor = Colors.blue.withOpacity(0.1); textColor = Colors.blue; icon = Icons.sync;
+        message = 'جاري المزامنة...'; break;
+      case 'error':
+        bgColor = Colors.orange.withOpacity(0.1); textColor = Colors.orange.shade700; icon = Icons.warning_amber_rounded;
+        message = 'جاري إعادة المحاولة...'; break;
+      default:
+        bgColor = Colors.green.withOpacity(0.1); textColor = Colors.green; icon = Icons.cloud_done;
+        message = 'جميع البيانات محفوظة';
+    }
+    return Container(
+      width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16), color: bgColor,
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(icon, color: textColor, size: 16),
+        const SizedBox(width: 8),
+        Text(message, style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 12)),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -67,13 +130,14 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('دوراتي', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(_syncStatus == 'syncing' ? Icons.sync : Icons.refresh),
             onPressed: () => _loadCourses(),
           ),
         ],
       ),
       body: Column(
         children: [
+          _buildSyncStatusBar(),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())

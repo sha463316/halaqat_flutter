@@ -4,7 +4,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:myhalaqat/core/network/sync_manager.dart';
-import 'package:myhalaqat/core/widgets/sync_indicator.dart';
 import 'package:myhalaqat/core/theme/app_theme.dart';
 import 'package:myhalaqat/core/notifiers/app_notifiers.dart';
 import 'package:myhalaqat/features/auth/screens/auth_wrapper.dart';
@@ -80,7 +79,6 @@ class MyApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: currentMode,
-          builder: (context, child) => SyncIndicator(child: child ?? const SizedBox()),
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
