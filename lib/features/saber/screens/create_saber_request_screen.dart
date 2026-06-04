@@ -239,6 +239,26 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> wit
     }
   }
 
+  Future<void> _deleteServerRequest(int requestId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف الطلب'),
+        content: const Text('هل أنت متأكد من حذف هذا الطلب المعلق؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    final ok = await _saberService.deleteSaberRequest(requestId, isLocal: false);
+    if (ok && mounted) {
+      setState(() => _previousRequests.removeWhere((r) => r['id'] == requestId));
+      CustomSnackbar.show(context, message: 'تم حذف الطلب', color: Colors.green, icon: Icons.check_circle);
+    }
+  }
+
   Future<void> _showSaberForm(dynamic student) async {
     int selectedPart = 1;
     String quizType = 'new';
@@ -246,7 +266,7 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> wit
 
     final saved = await showDialog<bool>(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -353,6 +373,7 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> wit
     final maxScore = double.tryParse((req['admin_max_score'] ?? '').toString()) ?? 100;
     final percentage = maxScore > 0 ? (score / maxScore * 100) : 0.0;
     final isFailed = status == 'completed' && percentage < 50;
+    final bool isPending = status == 'pending';
     Color statusColor; String statusText; IconData statusIcon;
     if (isFailed) {
       statusColor = Colors.red; statusText = 'راسب'; statusIcon = Icons.cancel;
@@ -373,6 +394,12 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> wit
             Icon(statusIcon, color: statusColor, size: 20),
             const SizedBox(width: 8),
             Expanded(child: Text(req['student_name'] ?? 'طالب', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
+            if (isPending)
+              IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                tooltip: 'حذف الطلب',
+                onPressed: () => _deleteServerRequest(req['id']),
+              ),
             Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
               child: Text(statusText, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 11)),
