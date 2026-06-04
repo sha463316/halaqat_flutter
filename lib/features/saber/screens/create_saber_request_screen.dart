@@ -209,14 +209,16 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> {
 
   Widget _buildRequestCard(Map<String, dynamic> req) {
     final status = req['status'] ?? 'pending';
-    final isCompleted = status == 'completed';
-    // API قد يُرجع score كـ String مثل "0.00"
     final score = double.tryParse((req['admin_score'] ?? '').toString()) ?? 0;
     final maxScore = double.tryParse((req['admin_max_score'] ?? '').toString()) ?? 100;
     final percentage = maxScore > 0 ? (score / maxScore * 100) : 0.0;
+    // completed + score منخفض = راسب
+    final isFailed = status == 'completed' && percentage < 50;
     Color statusColor; String statusText; IconData statusIcon;
-    switch (status) {
-      case 'completed': statusColor = Colors.green; statusText = 'مكتمل'; statusIcon = Icons.check_circle; break;
+    if (isFailed) {
+      statusColor = Colors.red; statusText = 'راسب'; statusIcon = Icons.cancel;
+    } else switch (status) {
+      case 'completed': statusColor = Colors.green; statusText = 'ناجح'; statusIcon = Icons.check_circle; break;
       case 'rejected': statusColor = Colors.red; statusText = 'مرفوض'; statusIcon = Icons.cancel; break;
       default: statusColor = Colors.orange; statusText = 'معلق'; statusIcon = Icons.hourglass_empty;
     }
@@ -245,8 +247,8 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> {
             const SizedBox(width: 16),
             Text(req['quiz_type'] == 'new' ? 'حفظ جديد' : 'مراجعة', style: TextStyle(color: Colors.grey[700], fontSize: 12)),
             const Spacer(),
-            if (isCompleted)
-              Text('$score/$maxScore', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: percentage >= 85 ? Colors.green : Colors.orange)),
+            if (status == 'completed')
+              Text('$score/$maxScore', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isFailed ? Colors.red : Colors.green)),
           ]),
           if (req['admin_notes'] != null && (req['admin_notes'] as String).isNotEmpty)
             Padding(padding: const EdgeInsets.only(top: 4),
