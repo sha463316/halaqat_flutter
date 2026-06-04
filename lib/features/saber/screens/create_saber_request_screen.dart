@@ -3,7 +3,6 @@ import 'package:myhalaqat/core/theme/app_theme.dart';
 import 'package:myhalaqat/core/widgets/custom_snackbar.dart';
 import 'package:myhalaqat/features/students/services/student_service.dart';
 import 'package:myhalaqat/features/saber/services/saber_service.dart';
-import 'package:myhalaqat/features/saber/screens/saber_requests_screen.dart';
 import 'package:myhalaqat/core/network/sync_manager.dart';
 import 'package:myhalaqat/core/notifiers/app_notifiers.dart';
 
@@ -15,17 +14,39 @@ class CreateSaberRequestScreen extends StatefulWidget {
   State<CreateSaberRequestScreen> createState() => _CreateSaberRequestScreenState();
 }
 
-class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> {
+class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> with SingleTickerProviderStateMixin {
   final StudentService _studentService = StudentService();
   final SaberService _saberService = SaberService();
+  final TextEditingController _searchCtrl = TextEditingController();
+  late TabController _tabController;
   bool _isLoading = true;
   List<dynamic> _students = [];
+  List<dynamic> _filteredStudents = [];
   List<dynamic> _previousRequests = [];
+  List<dynamic> _pendingLocal = [];
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadData();
+    _searchCtrl.addListener(_filterStudents);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _filterStudents() {
+    final query = _searchCtrl.text.trim().toLowerCase();
+    setState(() {
+      _filteredStudents = query.isEmpty
+          ? List.from(_students)
+          : _students.where((s) => (s['student_name'] ?? '').toString().toLowerCase().contains(query)).toList();
+    });
   }
 
   Future<void> _loadData() async {
@@ -33,35 +54,115 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> {
     final results = await Future.wait([
       _studentService.getStudentsByCircle(widget.circleId),
       _saberService.getMySaberRequests(),
+      _saberService.getPendingLocalRequests(),
     ]);
-    if (mounted) setState(() { _students = results[0]; _previousRequests = results[1]; _isLoading = false; });
+    if (mounted) {
+      setState(() {
+        _students = results[0];
+        _filteredStudents = List.from(_students);
+        _previousRequests = results[1];
+        _pendingLocal = results[2];
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('طلب سبر — اختر طالباً')),
+      appBar: AppBar(
+        title: const Text('طلب سبر'),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white60,
+          tabs: [
+            Tab(text: 'طلب سبر (${_filteredStudents.length})'),
+            Tab(text: 'سجل الطلبات (${_previousRequests.length})'),
+          ],
+        ),
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _students.isEmpty && _previousRequests.isEmpty
-              ? const Center(child: Text('لا يوجد طلاب', style: TextStyle(color: Colors.grey, fontSize: 16)))
-              : ListView(
-                  padding: const EdgeInsets.all(12),
-                  children: [
-                    if (_students.isNotEmpty) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Text('${_students.length} طالباً', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-                      ),
-                      ..._students.map((s) => _buildStudentCard(s)),
-                    ],
-                    if (_previousRequests.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      _buildHistoryHeader(),
-                      ..._previousRequests.map((r) => _buildRequestCard(r)),
-                    ],
-                  ],
-                ),
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildRequestTab(),
+                _buildHistoryTab(),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildRequestTab() {
+    if (_students.isEmpty) {
+      return const Center(child: Text('لا يوجد طلاب', style: TextStyle(color: Colors.grey, fontSize: 16)));
+    }
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+          child: TextField(
+            controller: _searchCtrl,
+            decoration: InputDecoration(
+              hintText: 'بحث عن طالب...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchCtrl.text.isNotEmpty
+                  ? IconButton(icon: const Icon(Icons.clear), onPressed: () { _searchCtrl.clear(); })
+                  : null,
+              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+            children: _filteredStudents.map((s) => _buildStudentCard(s)).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHistoryTab() {
+    if (_previousRequests.isEmpty && _pendingLocal.isEmpty) {
+      return const Center(child: Text('لا توجد طلبات سابقة', style: TextStyle(color: Colors.grey, fontSize: 16)));
+    }
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        if (_pendingLocal.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(children: [
+              Container(padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(color: AppColors.warning.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.hourglass_empty, color: AppColors.warning, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Text('بانتظار المزامنة (${_pendingLocal.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            ]),
+          ),
+          ..._pendingLocal.map((r) => _buildPendingCard(r)),
+          const SizedBox(height: 12),
+        ],
+        if (_previousRequests.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(children: [
+              Container(padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(color: AppColors.info.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.history, color: AppColors.info, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Text('الطلبات السابقة (${_previousRequests.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            ]),
+          ),
+          ..._previousRequests.map((r) => _buildRequestCard(r)),
+        ],
+      ],
     );
   }
 
@@ -89,6 +190,39 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildPendingCard(Map<String, dynamic> req) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 1,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(children: [
+          const Icon(Icons.hourglass_empty, color: AppColors.warning, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('طلب قيد المزامنة ⏳', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              Text('الجزء ${req['quran_part_id'] ?? '?'}', style: TextStyle(color: Colors.grey[700], fontSize: 12)),
+            ]),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+            onPressed: () => _deletePendingRequest(req['id']),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _deletePendingRequest(int localId) async {
+    final ok = await _saberService.deleteSaberRequest(localId, isLocal: true);
+    if (ok && mounted) {
+      setState(() => _pendingLocal.removeWhere((r) => r['id'] == localId));
+      CustomSnackbar.show(context, message: 'تم حذف الطلب', color: Colors.green, icon: Icons.check_circle);
+    }
   }
 
   Future<void> _showSaberForm(dynamic student) async {
@@ -184,6 +318,7 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> {
       if (mounted) {
         if (ok) {
           CustomSnackbar.show(context, message: 'تم إرسال طلب السبر بنجاح ✅', color: Colors.green, icon: Icons.check_circle);
+          _loadData();
         } else {
           CustomSnackbar.show(context, message: 'حفظ محلياً — سيرسل فور توفر الإنترنت', color: Colors.orange, icon: Icons.cloud_upload);
         }
@@ -191,28 +326,11 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> {
     }
   }
 
-  Widget _buildHistoryHeader() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(children: [
-        Container(padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(color: AppColors.info.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-          child: const Icon(Icons.history, color: AppColors.info, size: 18),
-        ),
-        const SizedBox(width: 10),
-        const Text('طلبات السبر السابقة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-        const Spacer(),
-        Text('${_previousRequests.length}', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-      ]),
-    );
-  }
-
   Widget _buildRequestCard(Map<String, dynamic> req) {
     final status = req['status'] ?? 'pending';
     final score = double.tryParse((req['admin_score'] ?? '').toString()) ?? 0;
     final maxScore = double.tryParse((req['admin_max_score'] ?? '').toString()) ?? 100;
     final percentage = maxScore > 0 ? (score / maxScore * 100) : 0.0;
-    // completed + score منخفض = راسب
     final isFailed = status == 'completed' && percentage < 50;
     Color statusColor; String statusText; IconData statusIcon;
     if (isFailed) {

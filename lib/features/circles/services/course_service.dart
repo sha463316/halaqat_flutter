@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:myhalaqat/core/network/api_client.dart';
 
 class CourseService {
@@ -18,14 +20,19 @@ class CourseService {
   }
 
   Future<Map<String, dynamic>?> getCourseDetails(int courseId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cacheKey = 'course_details_$courseId';
     try {
       final response = await _dio.get('/api/courses/$courseId/');
       if (response.statusCode == 200) {
+        await prefs.setString(cacheKey, jsonEncode(response.data));
         return response.data;
       }
       return null;
     } catch (e) {
       print('🚨 خطأ في جلب تفاصيل الدورة: $e');
+      final cached = prefs.getString(cacheKey);
+      if (cached != null) return jsonDecode(cached);
       return null;
     }
   }

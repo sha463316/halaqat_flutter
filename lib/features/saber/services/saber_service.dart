@@ -8,6 +8,18 @@ class SaberService {
   final Dio _dio = ApiClient().dio;
   final DatabaseHelper _db = DatabaseHelper.instance;
 
+  Future<List<dynamic>> getPendingLocalRequests() async {
+    try {
+      return await _db.queryWhere(
+        'pending_quiz_requests',
+        'sync_status IS NULL OR sync_status = ? OR sync_status = ?',
+        ['pending', 'sending'],
+      );
+    } catch (e) {
+      return [];
+    }
+  }
+
   Future<List<dynamic>> getMySaberRequests() async {
     try {
       List<dynamic> serverRequests = [];

@@ -416,6 +416,15 @@ class _StudentMemorizationPageState extends State<_StudentMemorizationPage> {
   String _resultLabel(String r) => switch (r) { 'excellent' => 'ممتاز', 'good' => 'جيد', _ => 'إعادة' };
 
   Future<void> _saveForms() async {
+    final prefs = await SharedPreferences.getInstance();
+    final courseId = prefs.getInt('last_course_id') ?? 0;
+    if (courseId > 0) {
+      final valid = await CourseService().isDateWithinCourse(courseId, widget.selectedDate);
+      if (!valid && mounted) {
+        CustomSnackbar.show(context, message: 'لا يمكن الحفظ في هذا التاريخ — اليوم خارج أيام الدورة أو تاريخ مستقبلي', color: Colors.red, icon: Icons.block);
+        return;
+      }
+    }
     for (final f in _forms) {
       try {
         await DatabaseHelper.instance.insert('pending_memorizations', {

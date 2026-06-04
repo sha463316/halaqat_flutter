@@ -33,6 +33,7 @@ class _MainScreenState extends State<MainScreen> {
         child: _screens[_currentIndex],
       ),
       bottomNavigationBar: Container(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
