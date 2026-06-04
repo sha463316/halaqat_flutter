@@ -1,3 +1,4 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:myhalaqat/core/theme/app_theme.dart';
 import 'package:myhalaqat/core/widgets/custom_snackbar.dart';
@@ -118,7 +119,7 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> wit
         ),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+            padding: EdgeInsets.fromLTRB(12, 4, 12, 12 + MediaQuery.of(context).padding.bottom + 16),
             children: _filteredStudents.map((s) => _buildStudentCard(s)).toList(),
           ),
         ),
@@ -198,7 +199,7 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> wit
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 1,
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Row(children: [
           const Icon(Icons.hourglass_empty, color: AppColors.warning, size: 20),
           const SizedBox(width: 8),
@@ -209,7 +210,8 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> wit
             ]),
           ),
           IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+            icon: const Icon(Icons.delete, color: Colors.red, size: 22),
+            tooltip: 'حذف الطلب',
             onPressed: () => _deletePendingRequest(req['id']),
           ),
         ]),
@@ -218,6 +220,18 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> wit
   }
 
   Future<void> _deletePendingRequest(int localId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف الطلب'),
+        content: const Text('هل أنت متأكد من حذف هذا الطلب المعلق؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirm != true) return;
     final ok = await _saberService.deleteSaberRequest(localId, isLocal: true);
     if (ok && mounted) {
       setState(() => _pendingLocal.removeWhere((r) => r['id'] == localId));
@@ -230,26 +244,18 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> wit
     String quizType = 'new';
     final notesCtrl = TextEditingController();
 
-    final saved = await showModalBottomSheet<bool>(
+    final saved = await showDialog<bool>(
       context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-            left: 20, right: 20, top: 20,
-          ),
-          child: SingleChildScrollView(
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        content: StatefulBuilder(
+          builder: (ctx, setDialogState) => SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(child: Container(width: 40, height: 4,
-                    decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
-                const SizedBox(height: 16),
                 Row(children: [
                   const Icon(Icons.quiz, color: AppColors.primary, size: 24),
                   const SizedBox(width: 10),
@@ -262,7 +268,7 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> wit
                 DropdownButtonFormField<int>(
                   value: selectedPart,
                   items: List.generate(30, (i) => DropdownMenuItem(value: i + 1, child: Text('الجزء ${i + 1}'))),
-                  onChanged: (v) => setSheetState(() => selectedPart = v ?? 1),
+                  onChanged: (v) => setDialogState(() => selectedPart = v ?? 1),
                   decoration: const InputDecoration(prefixIcon: Icon(Icons.auto_stories)),
                 ),
                 const SizedBox(height: 16),
@@ -270,9 +276,9 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> wit
                 const Text('النوع:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 8),
                 Row(children: [
-                  Expanded(child: _choiceChip('حفظ جديد', 'new', quizType, Icons.star, AppColors.primary, (v) => setSheetState(() => quizType = v))),
+                  Expanded(child: _choiceChip('حفظ جديد', 'new', quizType, Icons.star, AppColors.primary, (v) => setDialogState(() => quizType = v))),
                   const SizedBox(width: 12),
-                  Expanded(child: _choiceChip('مراجعة', 'review', quizType, Icons.menu_book, AppColors.info, (v) => setSheetState(() => quizType = v))),
+                  Expanded(child: _choiceChip('مراجعة', 'review', quizType, Icons.menu_book, AppColors.info, (v) => setDialogState(() => quizType = v))),
                 ]),
                 const SizedBox(height: 16),
 
@@ -298,7 +304,7 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> wit
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -308,19 +314,34 @@ class _CreateSaberRequestScreenState extends State<CreateSaberRequestScreen> wit
 
     notesCtrl.dispose();
     if (saved == true) {
-      final ok = await _saberService.createSaberRequest(
-        enrollmentId: student['id'],
-        quranPart: selectedPart,
-        quizType: quizType,
-        teacherNotes: notesCtrl.text,
-      );
+      final connectivity = await Connectivity().checkConnectivity();
+      final isOnline = !connectivity.contains(ConnectivityResult.none) && !connectivity.contains(ConnectivityResult.other);
 
-      if (mounted) {
-        if (ok) {
-          CustomSnackbar.show(context, message: 'تم إرسال طلب السبر بنجاح ✅', color: Colors.green, icon: Icons.check_circle);
+      if (isOnline) {
+        final ok = await _saberService.createSaberRequestOnline(
+          enrollmentId: student['id'],
+          quranPart: selectedPart,
+          quizType: quizType,
+          teacherNotes: notesCtrl.text,
+        );
+        if (mounted) {
+          if (ok) {
+            CustomSnackbar.show(context, message: 'تم إرسال طلب السبر بنجاح ✅', color: Colors.green, icon: Icons.check_circle);
+          } else {
+            CustomSnackbar.show(context, message: 'فشل الإرسال، حفظ محلياً', color: Colors.orange, icon: Icons.warning);
+          }
           _loadData();
-        } else {
+        }
+      } else {
+        await _saberService.createSaberRequest(
+          enrollmentId: student['id'],
+          quranPart: selectedPart,
+          quizType: quizType,
+          teacherNotes: notesCtrl.text,
+        );
+        if (mounted) {
           CustomSnackbar.show(context, message: 'حفظ محلياً — سيرسل فور توفر الإنترنت', color: Colors.orange, icon: Icons.cloud_upload);
+          _loadData();
         }
       }
     }

@@ -4,6 +4,7 @@ import 'package:myhalaqat/core/database/database_helper.dart';
 import 'package:myhalaqat/core/network/sync_manager.dart';
 import 'package:myhalaqat/core/notifiers/app_notifiers.dart';
 
+
 class SaberService {
   final Dio _dio = ApiClient().dio;
   final DatabaseHelper _db = DatabaseHelper.instance;
@@ -24,7 +25,7 @@ class SaberService {
     try {
       List<dynamic> serverRequests = [];
       try {
-        final response = await _dio.get('/api/quiz-requests/my_requests/');
+        final response = await _dio.get('/api/quiz-requests/');
         if (response.statusCode == 200) {
           serverRequests = response.data['results'] ?? [];
         }
@@ -39,23 +40,8 @@ class SaberService {
         ['pending', 'sending'],
       );
 
-      List<dynamic> localRequests = pendingLocal.map((req) {
-        return {
-          'id': req['id'],
-          'is_local': true, // علامة للتمييز بأن هذا الطلب لم يرفع بعد
-          'student_name':
-              'طلب قيد المزامنة ⏳', // سيتم سحب الاسم الفعلي من الكاش لاحقاً
-          'quran_part_id': req['quran_part_id'],
-          'part_name': 'الجزء ${req['quran_part_id']}',
-          'quiz_type': req['quiz_type'],
-          'status': 'pending',
-          'teacher_notes': req['teacher_notes'],
-          'requested_at': req['created_at'],
-        };
-      }).toList();
-
-      // دمج المحلي مع السيرفر بحيث ترى كل طلباتك
-      return [...localRequests, ...serverRequests];
+      // إرجاع طلبات السيرفر فقط (الطلبات المعلقة محلياً تظهر في قسم منفصل)
+      return serverRequests;
     } catch (e) {
       print('🚨 خطأ في جلب طلبات السبر: $e');
       return [];
@@ -84,6 +70,26 @@ class SaberService {
       return true;
     } catch (e) {
       print('🚨 خطأ في إنشاء طلب السبر محلياً: $e');
+      return false;
+    }
+  }
+
+  Future<bool> createSaberRequestOnline({
+    required int enrollmentId,
+    required int quranPart,
+    required String quizType,
+    required String teacherNotes,
+  }) async {
+    try {
+      final response = await _dio.post('/api/quiz-requests/', data: {
+        'enrollment': enrollmentId,
+        'quran_part': quranPart,
+        'quiz_type': quizType,
+        'teacher_notes': teacherNotes,
+      });
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print('🚨 خطأ في إرسال طلب السبر: $e');
       return false;
     }
   }
