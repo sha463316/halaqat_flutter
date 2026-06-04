@@ -91,150 +91,13 @@ class _CircleMemorizationRecordScreenState extends State<CircleMemorizationRecor
   }
 
   Future<void> _editRecord(Map<String, dynamic> record) async {
-    int currentSurahId = record['surah'] ?? 1;
-    Surah selectedSurah = surahs.firstWhere((s) => s.id == currentSurahId, orElse: () => surahs[0]);
-    String newType = record['type'] ?? 'new';
-    String newResult = record['result'] ?? 'excellent';
-    int fromAyah = record['from_ayah'] ?? 1;
-    int toAyah = record['to_ayah'] ?? 1;
-    final notesCtrl = TextEditingController(text: record['notes'] ?? '');
-
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 20, right: 20, top: 20),
-          child: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Center(child: Container(width: 40, height: 4,
-                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
-              const SizedBox(height: 16),
-              const Text('تعديل سجل الحفظ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-              const SizedBox(height: 20),
-
-              // السورة
-              const Text('السورة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<int>(
-                value: selectedSurah.id,
-                items: surahs.map((s) => DropdownMenuItem(value: s.id,
-                  child: Text('${s.number}. ${s.nameAr} (${s.totalAyahs})', style: const TextStyle(fontWeight: FontWeight.bold)),
-                )).toList(),
-                onChanged: (v) => setSheetState(() {
-                  selectedSurah = surahs.firstWhere((s) => s.id == (v ?? 1));
-                  fromAyah = 1; toAyah = selectedSurah.totalAyahs;
-                }),
-                decoration: const InputDecoration(prefixIcon: Icon(Icons.auto_stories), isDense: true),
-              ),
-              const SizedBox(height: 16),
-
-              // الآيات
-              Row(children: [
-                Expanded(child: _buildAyahEdit('من', 1, selectedSurah.totalAyahs, fromAyah, (v) {
-                  setSheetState(() { fromAyah = v; if (fromAyah > toAyah) toAyah = fromAyah; });
-                })),
-                const SizedBox(width: 12),
-                Expanded(child: _buildAyahEdit('إلى', fromAyah, selectedSurah.totalAyahs, toAyah, (v) {
-                  setSheetState(() => toAyah = v);
-                })),
-              ]),
-              const SizedBox(height: 16),
-
-              // النوع
-              const Text('النوع', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              const SizedBox(height: 8),
-              Row(children: [
-                _editChip('⭐ جديد', 'new', newType, (v) => setSheetState(() => newType = v)),
-                const SizedBox(width: 12),
-                _editChip('📖 مراجعة', 'review', newType, (v) => setSheetState(() => newType = v)),
-              ]),
-              const SizedBox(height: 16),
-
-              // النتيجة
-              const Text('النتيجة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              const SizedBox(height: 8),
-              Row(children: ['excellent', 'good', 'redo'].map((r) {
-                final sel = newResult == r;
-                return Expanded(child: GestureDetector(
-                  onTap: () => setSheetState(() => newResult = r),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12), margin: const EdgeInsets.only(left: 6),
-                    decoration: BoxDecoration(
-                      color: sel ? _colorFor(r).withOpacity(0.15) : Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: sel ? _colorFor(r) : Colors.grey.shade300, width: sel ? 2 : 1),
-                    ),
-                    child: Column(children: [
-                      Icon(_iconFor(r), color: sel ? _colorFor(r) : Colors.grey, size: 24),
-                      const SizedBox(height: 4),
-                      Text(_labelFor(r), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: sel ? _colorFor(r) : Colors.grey)),
-                    ]),
-                  ),
-                ));
-              }).toList()),
-              const SizedBox(height: 16),
-
-              // ملاحظات
-              TextField(controller: notesCtrl, maxLines: 2, textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(hintText: 'ملاحظات...', prefixIcon: Icon(Icons.notes, size: 20))),
-              const SizedBox(height: 24),
-
-              SizedBox(width: double.infinity, height: 48,
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  icon: const Icon(Icons.check), label: const Text('حفظ التعديل'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ]),
-          ),
-        ),
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _EditMemorizationPage(record: record),
       ),
     );
-
-    // حفظ قيمة الملاحظات قبل التخلص من الـ Controller
-    final notesVal = notesCtrl.text;
-    if (saved != true) { notesCtrl.dispose(); return; }
-    if (!mounted) { notesCtrl.dispose(); return; }
-
-    // تأخير الكود التالي إلى ما بعد اكتمال Animation إغلاق الـ BottomSheet
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      notesCtrl.dispose();
-
-      final id = record['id'];
-      final online = await _isOnline();
-      if (!mounted) return;
-    if (online) {
-      try {
-        await _dio.patch('/api/memorizations/$id/', data: {
-          'result': newResult, 'type': newType, 'from_ayah': fromAyah, 'to_ayah': toAyah, 'notes': notesVal,
-        });
-        CustomSnackbar.show(context, message: 'تم التعديل مباشرة ✅', color: Colors.green, icon: Icons.check_circle);
-      } catch (e) {
-        await DatabaseHelper.instance.insert('pending_memorizations', {
-          'enrollment_id': record['enrollment'], 'surah_id': record['surah'], 'surah_name': record['surah_name'],
-          'from_ayah': fromAyah, 'to_ayah': toAyah, 'type': newType, 'result': newResult,
-          'date': record['date'], 'notes': notesVal, 'action': 'update',
-          'server_id': id, 'created_at': DateTime.now().toIso8601String(),
-        });
-        CustomSnackbar.show(context, message: 'حفظ التعديل محلياً', color: Colors.orange, icon: Icons.cloud_upload);
-      }
-    } else {
-      await DatabaseHelper.instance.insert('pending_memorizations', {
-        'enrollment_id': record['enrollment'], 'surah_id': record['surah'], 'surah_name': record['surah_name'],
-        'from_ayah': fromAyah, 'to_ayah': toAyah, 'type': newType, 'result': newResult,
-        'date': record['date'], 'notes': notesVal, 'action': 'update',
-        'server_id': id, 'created_at': DateTime.now().toIso8601String(),
-      });
-      CustomSnackbar.show(context, message: 'حفظ التعديل محلياً — سيتم المزامنة', color: Colors.orange, icon: Icons.cloud_upload);
-    }
-        _fetchRecords();
-      });
+    if (saved == true) _fetchRecords();
   }
 
   // دوال مساعدة للتعديل
@@ -388,5 +251,169 @@ class _CircleMemorizationRecordScreenState extends State<CircleMemorizationRecor
       Text(_selectedDate.isEmpty ? 'لا توجد سجلات حفظ لهذه الحلقة' : 'لا توجد سجلات في هذا التاريخ',
           style: TextStyle(color: Colors.grey.shade500, fontSize: 16)),
     ]));
+  }
+}
+
+// صفحة تعديل حفظ كاملة (بدلاً من BottomSheet لتجنب Crash)
+class _EditMemorizationPage extends StatefulWidget {
+  final Map<String, dynamic> record;
+  const _EditMemorizationPage({required this.record});
+  @override State<_EditMemorizationPage> createState() => _EditMemorizationPageState();
+}
+
+class _EditMemorizationPageState extends State<_EditMemorizationPage> {
+  late Surah _surah;
+  late int _fromAyah;
+  late int _toAyah;
+  late String _type;
+  late String _result;
+  final _notesCtrl = TextEditingController();
+  final _dio = ApiClient().dio;
+
+  @override void initState() {
+    super.initState();
+    final r = widget.record;
+    _surah = surahs.firstWhere((s) => s.id == (r['surah'] ?? 1), orElse: () => surahs[0]);
+    _fromAyah = r['from_ayah'] ?? 1;
+    _toAyah = r['to_ayah'] ?? 1;
+    _type = r['type'] ?? 'new';
+    _result = r['result'] ?? 'excellent';
+    _notesCtrl.text = r['notes'] ?? '';
+  }
+
+  @override void dispose() { _notesCtrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('تعديل سجل الحفظ')),
+    body: ListView(padding: const EdgeInsets.all(16), children: [
+      const Text('السورة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+      const SizedBox(height: 8),
+      DropdownButtonFormField<int>(
+        value: _surah.id,
+        items: surahs.map((s) => DropdownMenuItem(value: s.id,
+          child: Text('${s.number}. ${s.nameAr} (${s.totalAyahs})', style: const TextStyle(fontWeight: FontWeight.bold)),
+        )).toList(),
+        onChanged: (v) => setState(() { _surah = surahs.firstWhere((s) => s.id == (v ?? 1)); _fromAyah = 1; _toAyah = _surah.totalAyahs; }),
+        decoration: const InputDecoration(prefixIcon: Icon(Icons.auto_stories), isDense: true),
+      ),
+      const SizedBox(height: 16),
+      Row(children: [
+        Expanded(child: _ayahField('من', 1, _surah.totalAyahs, _fromAyah, (v) { setState(() { _fromAyah = v; if (_fromAyah > _toAyah) _toAyah = _fromAyah; }); })),
+        const SizedBox(width: 12),
+        Expanded(child: _ayahField('إلى', _fromAyah, _surah.totalAyahs, _toAyah, (v) => setState(() => _toAyah = v))),
+      ]),
+      const SizedBox(height: 16),
+      const Text('النوع', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+      const SizedBox(height: 8),
+      Row(children: [
+        Expanded(child: _chip('⭐ جديد', _type == 'new', () => setState(() => _type = 'new'))),
+        const SizedBox(width: 12),
+        Expanded(child: _chip('📖 مراجعة', _type == 'review', () => setState(() => _type = 'review'))),
+      ]),
+      const SizedBox(height: 16),
+      const Text('النتيجة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+      const SizedBox(height: 8),
+      Row(children: ['excellent', 'good', 'redo'].map((r) {
+        final sel = _result == r;
+        return Expanded(child: GestureDetector(
+          onTap: () => setState(() => _result = r),
+          child: Container(padding: const EdgeInsets.symmetric(vertical: 14), margin: const EdgeInsets.only(left: 6),
+            decoration: BoxDecoration(
+              color: sel ? _color(r).withOpacity(0.15) : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: sel ? _color(r) : Colors.grey.shade300, width: 2),
+            ),
+            child: Column(children: [
+              Icon(_icon(r), color: sel ? _color(r) : Colors.grey, size: 28),
+              const SizedBox(height: 4),
+              Text(_label(r), style: TextStyle(fontWeight: FontWeight.bold, color: sel ? _color(r) : Colors.grey)),
+            ]),
+          ),
+        ));
+      }).toList()),
+      const SizedBox(height: 16),
+      TextField(controller: _notesCtrl, maxLines: 3, textInputAction: TextInputAction.done,
+        decoration: const InputDecoration(hintText: 'ملاحظات...', prefixIcon: Icon(Icons.notes))),
+      const SizedBox(height: 24),
+      SizedBox(width: double.infinity, height: 50,
+        child: ElevatedButton.icon(
+          onPressed: _save,
+          icon: const Icon(Icons.check), label: const Text('حفظ التعديل'),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+        ),
+      ),
+    ]),
+  );
+
+  Widget _ayahField(String label, int min, int max, int value, void Function(int) onChanged) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+    const SizedBox(height: 6),
+    Container(padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(10)),
+      child: DropdownButtonHideUnderline(child: DropdownButton<int>(isExpanded: true, value: value.clamp(min, max),
+        items: List.generate(max - min + 1, (i) => DropdownMenuItem(value: min + i, child: Text('الآية ${min + i}', style: const TextStyle(fontWeight: FontWeight.bold)))),
+        onChanged: (v) { if (v != null) onChanged(v); },
+      )),
+    ),
+  ]);
+
+  Widget _chip(String label, bool selected, VoidCallback onTap) => GestureDetector(
+    onTap: onTap,
+    child: Container(padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: selected ? Colors.green.withOpacity(0.1) : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: selected ? Colors.green : Colors.grey.shade300, width: selected ? 2 : 1),
+      ),
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: selected ? Colors.green : Colors.grey)),
+      ]),
+    ),
+  );
+
+  Color _color(String r) => switch (r) { 'excellent' => const Color(0xFFD4AF37), 'good' => Colors.green, _ => Colors.orange };
+  IconData _icon(String r) => switch (r) { 'excellent' => Icons.auto_awesome, 'good' => Icons.thumb_up, _ => Icons.refresh };
+  String _label(String r) => switch (r) { 'excellent' => 'ممتاز', 'good' => 'جيد', _ => 'إعادة' };
+
+  Future<void> _save() async {
+    final r = widget.record;
+    final id = r['id'];
+    final notes = _notesCtrl.text;
+    final online = await _isOnline();
+
+    if (online) {
+      try {
+        await _dio.patch('/api/memorizations/$id/', data: {
+          'surah': _surah.id, 'from_ayah': _fromAyah, 'to_ayah': _toAyah,
+          'type': _type, 'result': _result, 'notes': notes,
+        });
+        if (mounted) {
+          CustomSnackbar.show(context, message: 'تم التعديل مباشرة ✅', color: Colors.green, icon: Icons.check_circle);
+          Navigator.pop(context, true);
+        }
+      } catch (e) {
+        await _saveLocal(id, r, notes, 'update');
+        if (mounted) Navigator.pop(context, true);
+      }
+    } else {
+      await _saveLocal(id, r, notes, 'update');
+      if (mounted) Navigator.pop(context, true);
+    }
+  }
+
+  Future<void> _saveLocal(int id, Map<String, dynamic> r, String notes, String action) async {
+    await DatabaseHelper.instance.insert('pending_memorizations', {
+      'enrollment_id': r['enrollment'], 'surah_id': _surah.id, 'surah_name': _surah.nameAr,
+      'from_ayah': _fromAyah, 'to_ayah': _toAyah, 'type': _type, 'result': _result,
+      'date': r['date'], 'notes': notes, 'action': action,
+      'server_id': id, 'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<bool> _isOnline() async {
+    try { await _dio.get('/api/quran-parts/'); return true; } catch (_) { return false; }
   }
 }
