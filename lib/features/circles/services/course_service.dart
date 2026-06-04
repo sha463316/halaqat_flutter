@@ -56,14 +56,11 @@ class CourseService {
 
       final startDate = course['start_date']?.toString().substring(0, 10);
 
-      // 1. منع الأيام المستقبلية
+      // 1. منع الأيام المستقبلية فقط
       final today = DateTime.now().toIso8601String().substring(0, 10);
       if (dateStr.compareTo(today) > 0) return false;
 
-      // 2. التحقق من نطاق التاريخ (بعد بدء الدورة)
-      if (startDate != null && dateStr.compareTo(startDate) < 0) return false;
-
-      // 3. التحقق من يوم الأسبوع
+      // 2. التحقق من يوم الأسبوع (إذا كانت الدورة تحدد أياماً)
       final daysRaw = course['days'];
       if (daysRaw == null) return true;
 
@@ -75,7 +72,6 @@ class CourseService {
             dayInts.add(d);
           } else if (d is String) {
             final trimmed = d.trim();
-            // محاولة رقم أولاً ثم اسم عربي
             final asInt = int.tryParse(trimmed);
             if (asInt != null) {
               dayInts.add(asInt);
@@ -86,7 +82,6 @@ class CourseService {
           }
         }
       } else if (daysRaw is String && daysRaw.isNotEmpty) {
-        // "0,2,4" أو "الأحد,الثلاثاء,الخميس"
         for (final part in daysRaw.split(',')) {
           final trimmed = part.trim();
           final asInt = int.tryParse(trimmed);

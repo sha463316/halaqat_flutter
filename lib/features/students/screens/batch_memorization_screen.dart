@@ -26,6 +26,9 @@ class _BatchMemorizationScreenState extends State<BatchMemorizationScreen> with 
   late TabController _tabController;
   bool _isLoading = true, _isSaving = false;
   List<dynamic> _students = [];
+  List<dynamic> _filteredStudents = [];
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _sortBy = 'name';
   String _selectedDate = DateTime.now().toIso8601String().split('T')[0];
 
   // عداد تسجيلات الحفظ لكل طالب: Map<studentId, count>
@@ -37,13 +40,22 @@ class _BatchMemorizationScreenState extends State<BatchMemorizationScreen> with 
     return '${CourseService.getArabicDayName(d)} — $_selectedDate';
   }
 
-  @override void initState() { super.initState(); _tabController = TabController(length: 2, vsync: this); _fetchStudents(); }
-  @override void dispose() { _tabController.dispose(); super.dispose(); }
+  @override void initState() { super.initState(); _tabController = TabController(length: 2, vsync: this); _searchCtrl.addListener(_applyFilter); _fetchStudents(); }
+  @override void dispose() { _tabController.dispose(); _searchCtrl.dispose(); super.dispose(); }
+
+  void _applyFilter() {
+    final q = _searchCtrl.text.toLowerCase();
+    setState(() { _filteredStudents = _students.where((s) => (s['student_name'] ?? '').toLowerCase().contains(q)).toList(); _sortStudents(); });
+  }
+
+  void _sortStudents() {
+    if (_sortBy == 'name') _filteredStudents.sort((a, b) => (a['student_name'] ?? '').compareTo(b['student_name'] ?? ''));
+  }
 
   Future<void> _fetchStudents() async {
     setState(() => _isLoading = true);
     final data = await _studentService.getStudentsByCircle(widget.circleId);
-    if (mounted) setState(() { _students = data; _isLoading = false; });
+    if (mounted) setState(() { _students = data; _filteredStudents = List.from(data); _sortStudents(); _isLoading = false; });
   }
 
   @override
@@ -71,10 +83,11 @@ class _BatchMemorizationScreenState extends State<BatchMemorizationScreen> with 
             child: Text('إجمالي $totalCount تسجيل حفظ',
               style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13), textAlign: TextAlign.center),
           ),
+        _buildSearchBar(),
         Expanded(
           child: _isLoading ? const Center(child: CircularProgressIndicator())
-          : _students.isEmpty ? const Center(child: Text('لا يوجد طلاب', style: TextStyle(color: Colors.grey, fontSize: 16)))
-          : ListView.builder(padding: const EdgeInsets.fromLTRB(12, 8, 12, 100), itemCount: _students.length,
+          : _filteredStudents.isEmpty ? const Center(child: Text('لا يوجد طلاب', style: TextStyle(color: Colors.grey, fontSize: 16)))
+          : ListView.builder(padding: const EdgeInsets.fromLTRB(12, 8, 12, 100), itemCount: _filteredStudents.length,
               itemBuilder: (_, i) => _buildStudentCard(i)),
         ),
       ],
@@ -107,8 +120,31 @@ class _BatchMemorizationScreenState extends State<BatchMemorizationScreen> with 
     ]),
   );
 
+  Widget _buildSearchBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6), color: Colors.white,
+      child: Row(children: [
+        Expanded(child: TextField(
+          controller: _searchCtrl,
+          decoration: InputDecoration(
+            hintText: 'بحث عن طالب...', prefixIcon: const Icon(Icons.search, size: 20),
+            suffixIcon: _searchCtrl.text.isNotEmpty ? IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: _searchCtrl.clear) : null,
+            isDense: true, contentPadding: const EdgeInsets.symmetric(vertical: 8),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+          ),
+        )),
+        const SizedBox(width: 8),
+        DropdownButtonHideUnderline(child: DropdownButton<String>(
+          value: _sortBy, icon: const Icon(Icons.sort, size: 20),
+          items: const [DropdownMenuItem(value: 'name', child: Text('أبجدي', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)))],
+          onChanged: (v) { if (v != null) setState(() { _sortBy = v; _sortStudents(); }); },
+        )),
+      ]),
+    );
+  }
+
   Widget _buildStudentCard(int index) {
-    final s = _students[index]; final sId = s['id'];
+    final s = _filteredStudents[index]; final sId = s['id'];
     final mc = _studentMemCount[sId] ?? 0; final marked = mc > 0;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -195,10 +231,32 @@ class _StudentMemorizationPage extends StatefulWidget {
 
 class _StudentMemorizationPageState extends State<_StudentMemorizationPage> {
   final List<_MemForm> _forms = [];
+  // السجلات المحفوظة مسبقاً (للقراءة فقط)
+  List<Map<String, dynamic>> _savedRecords = [];
 
   @override void initState() {
     super.initState();
-    _forms.add(_MemForm(surah: surahs[0]));
+    _loadSavedRecords();
+  }
+
+  Future<void> _loadSavedRecords() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final rows = await db.query('pending_memorizations',
+        where: 'enrollment_id = ? AND date = ?',
+        whereArgs: [widget.student['id'], widget.selectedDate],
+        orderBy: 'created_at DESC',
+      );
+      if (mounted) {
+        setState(() {
+          _savedRecords = rows;
+          // دائماً نبدأ باستمارة واحدة جديدة (حتى لو في سجلات قديمة)
+          _forms.add(_MemForm(surah: surahs[0]));
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _forms.add(_MemForm(surah: surahs[0])));
+    }
   }
 
   @override
@@ -207,7 +265,7 @@ class _StudentMemorizationPageState extends State<_StudentMemorizationPage> {
       actions: [Padding(padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Center(child: Text('${_forms.length} تسجيل', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold))))],
     ),
-    body: ListView(padding: const EdgeInsets.all(16), children: [
+      body: ListView(padding: const EdgeInsets.all(16), children: [
       Card(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(children: [
@@ -217,10 +275,45 @@ class _StudentMemorizationPageState extends State<_StudentMemorizationPage> {
         ),
       ),
       const SizedBox(height: 16),
+
+      // السجلات المحفوظة مسبقاً
+      if (_savedRecords.isNotEmpty) ...[
+        Padding(padding: const EdgeInsets.only(bottom: 8),
+          child: Row(children: [
+            Container(padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(color: AppColors.success.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+              child: const Icon(Icons.check_circle, color: AppColors.success, size: 18)),
+            const SizedBox(width: 8),
+            Text('${_savedRecords.length} تسجيلات محفوظة', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.success)),
+          ]),
+        ),
+        ..._savedRecords.map((r) => Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          color: Colors.green.shade50,
+          elevation: 0,
+          child: Padding(padding: const EdgeInsets.all(12),
+            child: Row(children: [
+              const Icon(Icons.check_circle, color: Colors.green, size: 20),
+              const SizedBox(width: 10),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('${r['surah_name'] ?? 'سورة'} (${r['from_ayah']}-${r['to_ayah']})',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text('${r['type'] == 'new' ? 'حفظ جديد' : 'مراجعة'} — ${_resultLabel(r['result']?.toString() ?? '')}',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+              ])),
+              const Icon(Icons.cloud_done, color: Colors.green, size: 18),
+            ]),
+          ),
+        )),
+        const Divider(height: 24),
+      ],
+
+      // تسجيلات جديدة
       ...List.generate(_forms.length, (i) => _buildFormCard(i)),
       const SizedBox(height: 12),
       OutlinedButton.icon(
-        onPressed: () => setState(() => _forms.add(_MemForm(surah: _forms.last.surah))),
+        onPressed: () => setState(() => _forms.add(_MemForm(surah: _forms.isNotEmpty ? _forms.last.surah : surahs[0]))),
         icon: const Icon(Icons.add_circle_outline), label: const Text('إضافة تسجيل حفظ آخر'),
         style: OutlinedButton.styleFrom(foregroundColor: AppColors.primary, minimumSize: const Size(double.infinity, 48),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -320,6 +413,7 @@ class _StudentMemorizationPageState extends State<_StudentMemorizationPage> {
   Color _rCol(String r) => switch (r) { 'excellent' => AppColors.accent, 'good' => AppColors.success, _ => AppColors.warning };
   IconData _rIco(String r) => switch (r) { 'excellent' => Icons.auto_awesome, 'good' => Icons.thumb_up, _ => Icons.refresh };
   String _rLab(String r) => switch (r) { 'excellent' => 'ممتاز', 'good' => 'جيد', _ => 'إعادة' };
+  String _resultLabel(String r) => switch (r) { 'excellent' => 'ممتاز', 'good' => 'جيد', _ => 'إعادة' };
 
   Future<void> _saveForms() async {
     for (final f in _forms) {
@@ -343,12 +437,10 @@ class _StudentMemorizationPageState extends State<_StudentMemorizationPage> {
         }
       }
     }
-    final result = await SyncManager.instance.syncAll();
     if (mounted) {
       CustomSnackbar.show(context,
-        message: result.successCount > 0 ? 'تم حفظ وإرسال ${_forms.length} سجل ✅' : 'تم حفظ ${_forms.length} سجل — سيتم المزامنة تلقائياً 📡',
-        color: result.successCount > 0 ? Colors.green : Colors.orange,
-        icon: result.successCount > 0 ? Icons.check_circle : Icons.cloud_upload);
+        message: 'تم حفظ ${_forms.length} سجل في قائمة الانتظار ✅',
+        color: Colors.green, icon: Icons.check_circle);
       Navigator.pop(context, _forms.length);
     }
   }

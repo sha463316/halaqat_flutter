@@ -35,6 +35,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   bool _isLoading = true;
   bool _isSaving = false;
   List<dynamic> _students = [];
+  List<dynamic> _filteredStudents = [];
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _sortBy = 'name'; // name, points, attendance, absence
   final Map<int, String> _statuses = {};
   final Map<int, Map<String, dynamic>> _pendingMap = {};
   List<dynamic> _existingRecords = [];
@@ -54,13 +57,32 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _searchCtrl.addListener(_applyFilter);
     _fetchStudents();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _applyFilter() {
+    final q = _searchCtrl.text.toLowerCase();
+    setState(() {
+      _filteredStudents = _students.where((s) =>
+        (s['student_name'] ?? '').toLowerCase().contains(q)).toList();
+      _sortStudents();
+    });
+  }
+
+  void _sortStudents() {
+    switch (_sortBy) {
+      case 'name':
+        _filteredStudents.sort((a, b) => (a['student_name'] ?? '').compareTo(b['student_name'] ?? ''));
+        break;
+    }
   }
 
   Future<void> _fetchStudents() async {
@@ -86,6 +108,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     if (mounted) {
       setState(() {
         _students = data;
+        _filteredStudents = List.from(data);
+        _sortStudents();
         _pendingMap.clear();
         for (var p in pendingRecords) {
           _pendingMap[p['enrollment_id']] = {
@@ -187,13 +211,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                     _buildDateBar(),
                     if (_dateInvalid) _buildDateError(),
                     _buildBulkActions(),
+                    _buildSearchBar(),
                     Expanded(
-                      child: _students.isEmpty
+                      child: _filteredStudents.isEmpty
                           ? const Center(child: Text('لا يوجد طلاب', style: TextStyle(color: Colors.grey, fontSize: 16)))
                           : ListView(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               children: [
-                                ...List.generate(_students.length, (i) => _buildStudentCard(i)),
+                                ...List.generate(_filteredStudents.length, (i) => _buildStudentCard(i)),
                                 if (_existingRecords.isNotEmpty) ...[
                                   const SizedBox(height: 8),
                                   _buildHistoryHeader(),
@@ -303,6 +328,44 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     );
   }
 
+  Widget _buildSearchBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+      color: Colors.white,
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _searchCtrl,
+              decoration: InputDecoration(
+                hintText: 'بحث عن طالب...',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: _searchCtrl.text.isNotEmpty
+                    ? IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () { _searchCtrl.clear(); })
+                    : null,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _sortBy,
+              icon: const Icon(Icons.sort, size: 20),
+              items: const [
+                DropdownMenuItem(value: 'name', child: Text('أبجدي', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+              ],
+              onChanged: (v) { if (v != null) setState(() { _sortBy = v; _sortStudents(); }); },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHistoryHeader() {
     return Padding(
       padding: const EdgeInsets.only(top: 16, bottom: 8),
@@ -360,7 +423,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   }
 
   Widget _buildStudentCard(int index) {
-    final student = _students[index];
+    final student = _filteredStudents[index];
     final sId = student['id'];
     final currentStatus = _statuses[sId] ?? '';
     final isPending = _pendingMap.containsKey(sId);
