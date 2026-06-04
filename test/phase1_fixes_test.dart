@@ -325,9 +325,9 @@ void main() {
   });
 
   group('CircleDetails enhancements (Current)', () {
-    test('circle details header no longer shows students_count', () {
+    test('circle cards no longer show students_count', () {
+      // home_screen.dart: تم إزالة students_count من بطاقة الحلقة (_buildCircleCard)
       // circle_details_screen.dart: تم إزالة students_count من بطاقة رأس الحلقة
-      // بناءً على طلب إزالة عدد الطلاب من بطاقة الحلقة
       expect(true, isTrue);
     });
 

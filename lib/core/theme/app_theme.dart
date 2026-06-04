@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
   static const primary = Color(0xFF059669);
@@ -35,7 +34,7 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.surface,
-      textTheme: GoogleFonts.cairoTextTheme().apply(
+      textTheme: ThemeData.light().textTheme.apply(
         bodyColor: AppColors.text,
         displayColor: AppColors.text,
       ),
@@ -44,7 +43,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         centerTitle: true,
         elevation: 0,
-        titleTextStyle: GoogleFonts.cairo(
+        titleTextStyle: const TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
           color: Colors.white,
@@ -117,7 +116,7 @@ class AppTheme {
         secondary: AppColors.accent,
       ),
       scaffoldBackgroundColor: const Color(0xFF121212),
-      textTheme: GoogleFonts.cairoTextTheme(ThemeData.dark().textTheme),
+      textTheme: ThemeData.dark().textTheme,
       appBarTheme: const AppBarTheme(
         backgroundColor: Color(0xFF1F1F1F),
         foregroundColor: Colors.white,

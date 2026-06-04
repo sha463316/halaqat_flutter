@@ -332,8 +332,6 @@ class _CirclesScreen extends StatelessWidget {
     final name = circle['name'] ?? '';
     final teacher = circle['teacher_name'] ?? '';
     final circleId = circle['id'];
-    // عدد الطلاب - يأتي من API أو يكون 0
-    final studentsCount = circle['students_count'] ?? 0;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
@@ -378,10 +376,7 @@ class _CirclesScreen extends StatelessWidget {
                         const Icon(Icons.person, size: 14, color: Colors.white70),
                         const SizedBox(width: 4),
                         Text(teacher, style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.85))),
-                        const SizedBox(width: 16),
-                        const Icon(Icons.people, size: 14, color: Colors.white70),
-                        const SizedBox(width: 4),
-                        Text('$studentsCount طالب', style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.85))),
+
                       ],
                     ),
                   ],
