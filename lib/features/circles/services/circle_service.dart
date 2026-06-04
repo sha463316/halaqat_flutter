@@ -32,14 +32,19 @@ class CircleService {
   }
 
   Future<Map<String, dynamic>?> getCircleDetails(int circleId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cacheKey = 'circle_details_$circleId';
     try {
       final response = await _dio.get('/api/circles/$circleId/');
       if (response.statusCode == 200) {
+        await prefs.setString(cacheKey, jsonEncode(response.data));
         return response.data;
       }
       return null;
     } catch (e) {
       print('🚨 خطأ في جلب تفاصيل الحلقة: $e');
+      final cached = prefs.getString(cacheKey);
+      if (cached != null) return jsonDecode(cached);
       return null;
     }
   }

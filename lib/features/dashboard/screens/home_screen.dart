@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -285,13 +286,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<List<dynamic>> _getCirclesForCourse(int courseId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cacheKey = 'cached_circles_$courseId';
     try {
       final dio = ApiClient().dio;
       final response = await dio.get('/api/circles/?course=$courseId');
       if (response.statusCode == 200) {
-        return response.data['results'] ?? [];
+        final circles = response.data['results'] ?? [];
+        await prefs.setString(cacheKey, jsonEncode(circles));
+        return circles;
       }
     } catch (_) {}
+    final cached = prefs.getString(cacheKey);
+    if (cached != null && cached.isNotEmpty) return jsonDecode(cached);
     return [];
   }
 }

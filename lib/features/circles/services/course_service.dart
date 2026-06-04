@@ -7,14 +7,19 @@ class CourseService {
   final Dio _dio = ApiClient().dio;
 
   Future<List<dynamic>> getMyCourses() async {
+    final prefs = await SharedPreferences.getInstance();
     try {
       final response = await _dio.get('/api/courses/');
       if (response.statusCode == 200) {
-        return response.data['results'] ?? [];
+        final courses = response.data['results'] ?? [];
+        await prefs.setString('cached_courses', jsonEncode(courses));
+        return courses;
       }
       return [];
     } catch (e) {
       print('🚨 خطأ في جلب الدورات: $e');
+      final cached = prefs.getString('cached_courses');
+      if (cached != null && cached.isNotEmpty) return jsonDecode(cached);
       return [];
     }
   }
