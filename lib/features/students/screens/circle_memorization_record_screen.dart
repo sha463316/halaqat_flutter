@@ -196,12 +196,19 @@ class _CircleMemorizationRecordScreenState extends State<CircleMemorizationRecor
       ),
     );
 
+    // حفظ قيمة الملاحظات قبل التخلص من الـ Controller
     final notesVal = notesCtrl.text;
-    notesCtrl.dispose();
-    if (saved != true) return;
+    if (saved != true) { notesCtrl.dispose(); return; }
+    if (!mounted) { notesCtrl.dispose(); return; }
 
-    final id = record['id'];
-    final online = await _isOnline();
+    // تأخير الكود التالي إلى ما بعد اكتمال Animation إغلاق الـ BottomSheet
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      notesCtrl.dispose();
+
+      final id = record['id'];
+      final online = await _isOnline();
+      if (!mounted) return;
     if (online) {
       try {
         await _dio.patch('/api/memorizations/$id/', data: {
@@ -226,7 +233,8 @@ class _CircleMemorizationRecordScreenState extends State<CircleMemorizationRecor
       });
       CustomSnackbar.show(context, message: 'حفظ التعديل محلياً — سيتم المزامنة', color: Colors.orange, icon: Icons.cloud_upload);
     }
-    _fetchRecords();
+        _fetchRecords();
+      });
   }
 
   // دوال مساعدة للتعديل
