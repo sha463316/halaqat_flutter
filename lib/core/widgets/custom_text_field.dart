@@ -16,14 +16,16 @@ class CustomTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF2A2A2A) : Colors.white;
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: bgColor,
         borderRadius: BorderRadius.circular(12.0),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isDark ? 0.0 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -32,8 +34,10 @@ class CustomTextField extends StatelessWidget {
       child: TextField(
         controller: controller,
         obscureText: isPassword,
+        style: TextStyle(color: isDark ? Colors.white : null),
         decoration: InputDecoration(
           hintText: hintText,
+          hintStyle: TextStyle(color: isDark ? Colors.grey.shade400 : null),
           prefixIcon: Icon(icon, color: Theme.of(context).primaryColor),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12.0),
@@ -47,7 +51,7 @@ class CustomTextField extends StatelessWidget {
             ),
           ),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: bgColor,
           contentPadding: const EdgeInsets.symmetric(vertical: 16.0),
         ),
       ),

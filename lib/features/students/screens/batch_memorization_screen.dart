@@ -95,7 +95,8 @@ class _BatchMemorizationScreenState extends State<BatchMemorizationScreen> with 
   }
 
   Widget _buildTopBar() => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), color: Colors.white,
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E1E1E) : Colors.white,
     child: Row(children: [
       const Icon(Icons.calendar_today, color: AppColors.primary, size: 18), const SizedBox(width: 8),
       const Text('التاريخ:', style: TextStyle(fontWeight: FontWeight.bold)), const Spacer(),
@@ -121,8 +122,9 @@ class _BatchMemorizationScreenState extends State<BatchMemorizationScreen> with 
   );
 
   Widget _buildSearchBar() {
+    final bgColor = Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E1E1E) : Colors.white;
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6), color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6), color: bgColor,
       child: Row(children: [
         Expanded(child: TextField(
           controller: _searchCtrl,
@@ -185,7 +187,11 @@ class _BatchMemorizationScreenState extends State<BatchMemorizationScreen> with 
 
   Widget _buildBottomBar() => Container(
     padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))]),
+    decoration: BoxDecoration(
+      color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E1E1E) : Colors.white,
+      boxShadow: [BoxShadow(
+        color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.0 : 0.05),
+        blurRadius: 10, offset: const Offset(0, -5))]),
     child: SafeArea(child: SizedBox(width: double.infinity, height: 48,
       child: ElevatedButton.icon(
         onPressed: _isSaving ? null : _saveAll,

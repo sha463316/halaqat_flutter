@@ -241,9 +241,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   }
 
   Widget _buildDateBar() {
+    final bgColor = Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E1E1E) : Colors.white;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      color: Colors.white,
+      color: bgColor,
       child: Row(
         children: [
           const Icon(Icons.calendar_today, color: Colors.green, size: 18),
@@ -329,9 +330,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   }
 
   Widget _buildSearchBar() {
+    final bgColor = Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E1E1E) : Colors.white;
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
-      color: Colors.white,
+      color: bgColor,
       child: Row(
         children: [
           Expanded(
@@ -581,10 +583,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   }
 
   Widget _buildBottomBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, boxShadow: [
-        BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5)),
+      decoration: BoxDecoration(color: isDark ? const Color(0xFF1E1E1E) : Colors.white, boxShadow: [
+        BoxShadow(color: Colors.black.withOpacity(isDark ? 0.0 : 0.05), blurRadius: 10, offset: const Offset(0, -5)),
       ]),
       child: SafeArea(
         child: SizedBox(
