@@ -266,6 +266,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final courseId = course['id'];
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('last_course_id', courseId);
+    final title = course['title'] ?? '';
 
     final circles = await _getCirclesForCourse(courseId);
     if (!mounted) return;
@@ -276,7 +277,9 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    _showCirclePicker(courseId, course['title'] ?? '', circles);
+    Navigator.push(context, MaterialPageRoute(
+      builder: (_) => _CirclesScreen(courseTitle: title, circles: circles, courseId: courseId),
+    ));
   }
 
   Future<List<dynamic>> _getCirclesForCourse(int courseId) async {
@@ -289,80 +292,100 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (_) {}
     return [];
   }
+}
 
-  void _showCirclePicker(int courseId, String courseTitle, List<dynamic> circles) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+// شاشة عرض حلقات الدورة (بطاقات)
+class _CirclesScreen extends StatelessWidget {
+  final String courseTitle;
+  final List<dynamic> circles;
+  final int courseId;
+
+  const _CirclesScreen({
+    required this.courseTitle,
+    required this.circles,
+    required this.courseId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(courseTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text('الحلقات — $courseTitle',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            const Divider(),
-            const SizedBox(height: 8),
-            ...circles.map((circle) => _buildCircleTile(ctx, circle)),
-          ],
-        ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text('${circles.length} حلقات',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+          ),
+          ...circles.map((circle) => _buildCircleCard(context, circle)),
+        ],
       ),
     );
   }
 
-  Widget _buildCircleTile(BuildContext ctx, dynamic circle) {
+  Widget _buildCircleCard(BuildContext context, dynamic circle) {
+    final name = circle['name'] ?? '';
+    final teacher = circle['teacher_name'] ?? '';
+    final circleId = circle['id'];
+    // عدد الطلاب - يأتي من API أو يكون 0
+    final studentsCount = circle['students_count'] ?? 0;
+
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 14),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      elevation: 3,
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         onTap: () {
-          Navigator.pop(ctx);
           Navigator.push(context, MaterialPageRoute(
             builder: (_) => CircleDetailsScreen(
-              circleId: circle['id'],
-              circleName: circle['name'] ?? '',
-              courseId: circle['course'] ?? 0,
+              circleId: circleId,
+              circleName: name,
+              courseId: courseId,
             ),
           ));
         },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [const Color(0xFF059669), const Color(0xFF047857)],
+              begin: Alignment.topLeft, end: Alignment.bottomRight,
+            ),
+          ),
+          padding: const EdgeInsets.all(20),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.group_work, color: Theme.of(context).primaryColor, size: 28),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(14)),
+                child: const Icon(Icons.group_work, color: Colors.white, size: 32),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(circle['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    const SizedBox(height: 4),
-                    Text(circle['teacher_name'] ?? '',
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                    Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.person, size: 14, color: Colors.white70),
+                        const SizedBox(width: 4),
+                        Text(teacher, style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.85))),
+                        const SizedBox(width: 16),
+                        const Icon(Icons.people, size: 14, color: Colors.white70),
+                        const SizedBox(width: 4),
+                        Text('$studentsCount طالب', style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.85))),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios, color: Colors.grey.shade400, size: 16),
+              Icon(Icons.arrow_forward_ios, color: Colors.white.withOpacity(0.7), size: 18),
             ],
           ),
         ),
@@ -370,3 +393,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+

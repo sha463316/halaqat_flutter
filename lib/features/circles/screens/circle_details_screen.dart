@@ -47,18 +47,6 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.circleName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.people),
-            tooltip: 'قائمة الطلاب',
-            onPressed: () => Navigator.push(context, MaterialPageRoute(
-              builder: (_) => StudentsListScreen(
-                circleId: widget.circleId,
-                circleName: widget.circleName,
-              ),
-            )),
-          ),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -75,17 +63,6 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
                   const Text('الإجراءات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
                   _buildActionGrid(),
-                  const SizedBox(height: 24),
-
-                  // سجلات الحلقة
-                  const Text('السجلات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  _buildRecordLinks(),
-
-                  if (_circleData != null) ...[
-                    const SizedBox(height: 24),
-                    _buildInfoSection(),
-                  ],
                 ],
               ),
             ),
@@ -152,23 +129,12 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(child: _buildActionCard(
-              title: 'طلب سبر', icon: Icons.quiz, color: Colors.blue,
-              onTap: () => Navigator.push(context, MaterialPageRoute(
-                builder: (_) => CreateSaberRequestScreen(circleId: widget.circleId),
-              )),
-            )),
-            const SizedBox(width: 12),
-            Expanded(child: _buildActionCard(
-              title: 'سجل طالب', icon: Icons.person_search, color: Colors.purple,
-              onTap: () => Navigator.push(context, MaterialPageRoute(
-                builder: (_) => StudentsListScreen(circleId: widget.circleId, circleName: widget.circleName),
-              )),
-            )),
-          ],
-        ),
+        Expanded(child: _buildActionCard(
+          title: 'طلب سبر', icon: Icons.quiz, color: Colors.blue,
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => CreateSaberRequestScreen(circleId: widget.circleId),
+          )),
+        )),
       ],
     );
   }
