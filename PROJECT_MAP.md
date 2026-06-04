@@ -308,17 +308,16 @@ AuthWrapper
 
 ## 10. أحدث التغييرات (آخر 3 تغييرات)
 
-### 1. CircleDetailsScreen — إظهار students_count + عرض كامل لبطاقة السبر
+### 1. إزالة عدد الطلاب من بطاقة الحلقة + عرض كامل لبطاقة السبر
 - **الملف:** `lib/features/circles/screens/circle_details_screen.dart`
-- إضافة عرض عدد الطلاب (`students_count`) في بطاقة رأس الحلقة (`_buildCircleHeader`) عند السطور 103-114
-- إصلاح عرض بطاقة "طلب سبر" لتأخذ العرض الكامل باستخدام `SizedBox(width: double.infinity)` بدلاً من `Expanded` — السطر 146-154
-- يظهر كأيقونة أشخاص + رقم و "طالب" بجانبها
+- إزالة `students_count` من بطاقة رأس الحلقة في `_buildCircleHeader` (طلب المستخدم)
+- إصلاح عرض بطاقة "طلب سبر" لتأخذ العرض الكامل باستخدام `SizedBox(width: double.infinity)` بدلاً من `Expanded` — السطر 140-150
 
 ### 2. SyncAppBarAction — مؤشر حالة المزامنة في شريط التطبيق
 - **الملف:** `lib/core/widgets/sync_indicator.dart` (السطور 100-170)
 - إنشاء widget جديد `SyncAppBarAction` يُضاف إلى `actions:` في AppBar
-- يستمع إلى `pendingCountNotifier` عبر `ListenableBuilder`
-- يعرض أيقونة سحابة ملونة: 🟢 `cloud_done` (مزامن)، 🟠 `cloud_upload` مع Badge (معلق)، 🔴 `cloud_off` (غير متصل)
+- يستمع إلى `pendingCountNotifier` عبر `ListenableBuilder` — تحديث فوري
+- يعرض أيقونة سحابة ملونة: أبيض `cloud_done` (مزامن ← لون أبيض ليتناسب مع خلفية AppBar الخضراء)، 🟠 `cloud_upload` مع Badge (معلق)، 🔴 `cloud_off` (غير متصل)
 - بالضغط يُشغّل `SyncManager.instance.syncAll()`
 - أُضيف إلى **home_screen.dart** (السطر 133) و **circle_details_screen.dart** (السطر 51)
 
