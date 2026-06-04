@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myhalaqat/core/network/sync_manager.dart';
 import 'package:myhalaqat/core/theme/app_theme.dart';
-import 'package:myhalaqat/core/widgets/sync_indicator.dart';
 import 'package:myhalaqat/features/dashboard/screens/home_screen.dart';
 import 'package:myhalaqat/features/teacher_profile/screens/profile_screen.dart';
 
@@ -29,11 +28,9 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SyncIndicator(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
-          child: _screens[_currentIndex],
-        ),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        child: _screens[_currentIndex],
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(

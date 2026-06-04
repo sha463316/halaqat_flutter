@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myhalaqat/core/theme/app_theme.dart';
+import 'package:myhalaqat/core/widgets/sync_indicator.dart';
 import 'package:myhalaqat/features/circles/services/circle_service.dart';
 import 'package:myhalaqat/features/attendance/screens/attendance_screen.dart';
 import 'package:myhalaqat/features/students/screens/batch_memorization_screen.dart';
@@ -47,6 +48,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.circleName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        actions: const [SyncAppBarAction()],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -129,12 +131,15 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        Expanded(child: _buildActionCard(
-          title: 'طلب سبر', icon: Icons.quiz, color: Colors.blue,
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => CreateSaberRequestScreen(circleId: widget.circleId),
-          )),
-        )),
+        SizedBox(
+          width: double.infinity,
+          child: _buildActionCard(
+            title: 'طلب سبر', icon: Icons.quiz, color: Colors.blue,
+            onTap: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => CreateSaberRequestScreen(circleId: widget.circleId),
+            )),
+          ),
+        ),
       ],
     );
   }

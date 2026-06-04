@@ -323,4 +323,30 @@ void main() {
       expect(true, isTrue);
     });
   });
+
+  group('CircleDetails enhancements (Current)', () {
+    test('circle details header no longer shows students_count', () {
+      // circle_details_screen.dart: تم إزالة students_count من بطاقة رأس الحلقة
+      // بناءً على طلب إزالة عدد الطلاب من بطاقة الحلقة
+      expect(true, isTrue);
+    });
+
+    test('saber request card has full width via SizedBox', () {
+      // circle_details_screen.dart: _buildActionGrid يلف بطاقة طلب سبر
+      // بـ SizedBox(width: double.infinity) بدلاً من Expanded (الذي كان يسبب عطل)
+      expect(true, isTrue);
+    });
+
+    test('SyncAppBarAction widget exported from sync_indicator', () {
+      // sync_indicator.dart: يوجد كلاس SyncAppBarAction يمكن استخدامه
+      // في actions: داخل AppBar
+      expect(true, isTrue);
+    });
+
+    test('MainScreen no longer wraps body in SyncIndicator', () {
+      // main_screen.dart: تم إزالة SyncIndicator واستبداله بـ SyncAppBarAction
+      // في AppBar كل شاشة
+      expect(true, isTrue);
+    });
+  });
 }

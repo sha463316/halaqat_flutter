@@ -7,6 +7,7 @@ import 'package:myhalaqat/core/network/api_client.dart';
 import 'package:myhalaqat/core/notifiers/app_notifiers.dart';
 import 'package:myhalaqat/core/theme/app_theme.dart';
 import 'package:myhalaqat/core/database/database_helper.dart';
+import 'package:myhalaqat/core/widgets/sync_indicator.dart';
 import 'package:myhalaqat/features/circles/services/course_service.dart';
 import 'package:myhalaqat/features/circles/screens/circle_details_screen.dart';
 
@@ -129,6 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('دوراتي', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
+          const SyncAppBarAction(),
           IconButton(
             icon: Icon(_syncStatus == 'syncing' ? Icons.sync : Icons.refresh),
             onPressed: () => _loadCourses(),

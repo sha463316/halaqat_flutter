@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:myhalaqat/core/notifiers/app_notifiers.dart';
+import 'package:myhalaqat/core/network/sync_manager.dart';
 import 'package:myhalaqat/core/theme/app_theme.dart';
 
 /// أيقونة حالة المزامنة — تضاف كـ Stack أعلى الواجهة
@@ -92,6 +93,78 @@ class _SyncIndicatorState extends State<SyncIndicator> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// أيقونة المزامنة لشريط التطبيق العلوي — تُستخدم في actions: داخل AppBar
+class SyncAppBarAction extends StatefulWidget {
+  const SyncAppBarAction({Key? key}) : super(key: key);
+
+  @override
+  State<SyncAppBarAction> createState() => _SyncAppBarActionState();
+}
+
+class _SyncAppBarActionState extends State<SyncAppBarAction> {
+  bool _isOnline = true;
+  StreamSubscription? _connectivitySub;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkConnection();
+    _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
+      final online = !results.contains(ConnectivityResult.none) && !results.contains(ConnectivityResult.other);
+      if (mounted) setState(() => _isOnline = online);
+    });
+  }
+
+  @override
+  void dispose() {
+    _connectivitySub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkConnection() async {
+    final results = await Connectivity().checkConnectivity();
+    if (mounted) {
+      setState(() => _isOnline = !results.contains(ConnectivityResult.none) && !results.contains(ConnectivityResult.other));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: pendingCountNotifier,
+      builder: (context, _) {
+        final count = pendingCountNotifier.value;
+        Color color;
+        IconData icon;
+        String tooltip;
+        if (count > 0) {
+          color = AppColors.warning;
+          icon = Icons.cloud_upload;
+          tooltip = 'مزامنة ($count معلق)';
+        } else if (!_isOnline) {
+          color = AppColors.danger;
+          icon = Icons.cloud_off;
+          tooltip = 'غير متصل';
+        } else {
+          color = Colors.white;
+          icon = Icons.cloud_done;
+          tooltip = 'مزامن';
+        }
+        return IconButton(
+          icon: count > 0
+              ? Badge(
+                  label: Text('$count'),
+                  child: Icon(icon, color: color),
+                )
+              : Icon(icon, color: color),
+          tooltip: tooltip,
+          onPressed: () => SyncManager.instance.syncAll(),
+        );
+      },
     );
   }
 }
